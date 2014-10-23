@@ -59,9 +59,12 @@ public class Sudoku {
     // long as the cell is not already set (non-zero),
     // in which case there are no candidates.
     public boolean[] candidates(int row, int col, int[][] board) {
-        if(board[row][col] != 0)
-            return null;
         boolean[] retSet = new boolean[BOARD_SQUR + 1];
+        if(board[row][col] != 0) {
+            for(int i = 1; i < BOARD_SQUR; i++)
+                retSet[i] = false;
+            return retSet;
+        }
         for(int i = 1; i < BOARD_SQUR; i++)
             retSet[i] = true;
         // Check row
@@ -108,8 +111,18 @@ public class Sudoku {
 
     // Returns true if made any changes
     public boolean nakedSingles() {
-        // TODO
-        return true;
+        boolean ret = false;
+        for(int row = 0; row < BOARD_ROWS; row++) {
+            for(int col = 0; col < BOARD_COLS; col++) {
+                int[] candidates = candidatesList(row, col);
+                if(candidates.length == 1) {
+                    this.board[row][col] = candidates[0];
+                    System.out.format("Found naked single at (%d, %d)%n", row, col);
+                    ret = true;
+                }
+            }
+        }
+        return ret;
     }
 
     // Returns true if made any changes
