@@ -92,7 +92,10 @@ public class Sudoku {
         String lineBreak = "  +";
         for(int colGroup = 0; colGroup < BOARD_COLS / BOARD_ROOT; colGroup++) {
             firstLine += "  ";
-            lineBreak += "-------+";
+            lineBreak += "-";
+            for(int i = 0; i < BOARD_ROOT; i++)
+                lineBreak += "--";
+            lineBreak += "+";
             for(int col = colGroup * BOARD_ROOT; col < (colGroup + 1) * BOARD_ROOT; col++)
                 firstLine += " " + (col + 1);
         }
