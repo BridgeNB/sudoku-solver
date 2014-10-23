@@ -1,3 +1,9 @@
+class BoardValidityException extends RuntimeException {
+    public BoardValidityException(int val, int valRow, int valCol, int conRow, int conCol, String checkType) {
+        super("Cell with value " + val + " at (" + valRow + ", " + valCol + ") conflicts with (" + conRow + ", " + conCol + ") in " + checkType + " check");
+    }
+}
+
 public class Sudoku {
 
 /******************************************************
@@ -29,7 +35,7 @@ public class Sudoku {
     }
 
     public Sudoku(String lineBoard) {
-        this.board(parseString(lineBoard));
+        this.board(this.parseString(lineBoard));
     }
 
     // Return the current board
@@ -39,7 +45,7 @@ public class Sudoku {
 
     // Set the board by given value
     public void board(int[][] board) {
-        if(!validateBoard(board))
+        if(!this.validateBoard(board))
             throw new RuntimeException("Invalid board");
         this.board = board;
     }
@@ -75,8 +81,8 @@ public class Sudoku {
     // Attempts to solve the board. Exits when board
     // is solved or no updates were made to the board
     public void solve() {
-        while (!isSolved() &&
-              (nakedSingles() || hiddenSingles()));
+        while (!this.isSolved() &&
+              (this.nakedSingles() || this.hiddenSingles()));
     }
 
     public String toString() {
@@ -121,16 +127,89 @@ public class Sudoku {
                     Private Methods
 *******************************************************/
 
-    private boolean validateBoard(int[][] board) {
-        if(board.length != BOARD_ROWS)
-            return false;
-        for(int i = 0; i < BOARD_ROWS; i++)
-            if(board[i].length != BOARD_COLS)
+    // Check the subunits of a certain cell to see if the number
+    // filled in the cell is legal.
+    private boolean isLegal(int row, int col, int val, int[][] board, boolean throwExcption) {
+        if(val == 0)
+            return true;
+        // Check sub-row
+        for(int c = 0; c < BOARD_COLS; c++)
+            if(c != col && val == board[row][c]) {
+                if(throwExcption)
+                    throw new BoardValidityException(val, row, col, row, c, "row");
                 return false;
+            }
+        // Check sub-column
+        for(int r = 0; r < BOARD_ROWS; r++)
+            if(r != row && val == board[r][col]) {
+                if(throwExcption)
+                    throw new BoardValidityException(val, row, col, r, col, "col");
+                return false;
+            }
+        // Check sub-block
+        int rowBoxOffset = (row / BOARD_ROOT) * BOARD_ROOT;
+        int colBoxOffset = (col / BOARD_ROOT) * BOARD_ROOT;
+        for (int i = 0; i < BOARD_ROOT; ++i) {
+            for (int j = 0; j < BOARD_ROOT; ++j) {
+                int r = rowBoxOffset + i;
+                int c = colBoxOffset + j;
+                if (!(r == row && c == col) && val == board[r][c]) {
+                    if(throwExcption)
+                        throw new BoardValidityException(val, row, col, r, c, "box");
+                    return false;
+                }
+            }
+        }
         return true;
     }
 
+    private boolean isLegal(int row, int col, int val, int[][] board) {
+        return this.isLegal(row, col, val, board, false);
+    }
+
+    private boolean isLegal(int row, int col) {
+        return this.isLegal(row, col, this.board[row][col], this.board);
+    }
+
+    private boolean isLegal(int row, int col, boolean throwExcption) {
+        return this.isLegal(row, col, this.board[row][col], this.board, throwExcption);
+    }
+
+    private boolean isLegal(int row, int col, int val) {
+        return this.isLegal(row, col, val, this.board);
+    }
+
+    private boolean isLegal(int row, int col, int val, boolean throwExcption) {
+        return this.isLegal(row, col, val, this.board, throwExcption);
+    }
+
+    private boolean isLegal(int row, int col, int[][] board) {
+        return this.isLegal(row, col, board[row][col], board);
+    }
+
+    private boolean isLegal(int row, int col, int[][] board, boolean throwExcption) {
+        return this.isLegal(row, col, board[row][col], board, throwExcption);
+    }
+
+    private boolean validateBoard(int[][] board) {
+        if(board.length != BOARD_ROWS)
+            return false;
+        for(int row = 0; row < BOARD_ROWS; row++) {
+            if(board[row].length != BOARD_COLS)
+                return false;
+            for(int col = 0; col < BOARD_COLS; col++)
+                if(!this.isLegal(row, col, board))
+                    return false;
+        }
+        return true;
+    }
+
+    private boolean validateBoard() {
+        return this.validateBoard(this.board);
+    }
+
     private int[][] parseString(String lineBoard) {
+        lineBoard = lineBoard.replaceAll("[^\\d]", "");
         if(lineBoard.length() != BOARD_CELS)
             throw new RuntimeException("Invalid cell number");
         int[][] board = new int[BOARD_ROWS][BOARD_COLS];
