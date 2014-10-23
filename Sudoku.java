@@ -113,7 +113,7 @@ public class Sudoku {
                 for(int colGroup = 0; colGroup < BOARD_COLS / BOARD_ROOT; colGroup++) {
                     for(int col = colGroup * BOARD_ROOT; col < (colGroup + 1) * BOARD_ROOT; col++) {
                         int cell = this.board[row][col];
-                        line += " " + (cell > 0 ? cell : " ");
+                        line += " " + (cell > 0 ? cell : ".");
                     }
                     line += " |";
                 }
