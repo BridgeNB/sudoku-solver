@@ -209,7 +209,10 @@ public class Sudoku {
     }
 
     private int[][] parseString(String lineBoard) {
-        lineBoard = lineBoard.replaceAll("[^\\d]", "");
+        lineBoard = lineBoard.replaceAll("/\\*(.*?)\\*/" , "" )
+                             .replaceAll("//(.*?)\\r?\\n", "" )
+                             .replaceAll("\\."           , "0")
+                             .replaceAll("[^\\d]"        , "" );
         if(lineBoard.length() != BOARD_CELS)
             throw new RuntimeException("Invalid cell number");
         int[][] board = new int[BOARD_ROWS][BOARD_COLS];
