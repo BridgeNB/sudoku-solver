@@ -1,3 +1,5 @@
+import java.util.*;
+
 class BoardValidityException extends RuntimeException {
     public BoardValidityException(int val, int valRow, int valCol, int conRow, int conCol, String checkType) {
         super("Cell with value " + val + " at (" + valRow + ", " + valCol + ") conflicts with (" + conRow + ", " + conCol + ") in " + checkType + " check");
@@ -11,8 +13,9 @@ public class Sudoku {
 *******************************************************/
 
     final int BOARD_ROOT = 3;
-    final int BOARD_ROWS = BOARD_ROOT * BOARD_ROOT;
-    final int BOARD_COLS = BOARD_ROOT * BOARD_ROOT;
+    final int BOARD_SQUR = BOARD_ROOT * BOARD_ROOT;
+    final int BOARD_ROWS = BOARD_SQUR;
+    final int BOARD_COLS = BOARD_SQUR;
     final int BOARD_CELS = BOARD_ROWS * BOARD_COLS;
 
     private int[][] board;
@@ -55,9 +58,52 @@ public class Sudoku {
     // a candidate for the cell at row and column, so
     // long as the cell is not already set (non-zero),
     // in which case there are no candidates.
-    public boolean[] candidates(int row, int column) {
-        // TODO
-        return new boolean[]{true};
+    public boolean[] candidates(int row, int col, int[][] board) {
+        if(board[row][col] != 0)
+            return null;
+        boolean[] retSet = new boolean[BOARD_SQUR + 1];
+        for(int i = 1; i < BOARD_SQUR; i++)
+            retSet[i] = true;
+        // Check row
+        for(int c = 0; c < BOARD_COLS; c++) {
+            int i = board[row][c];
+            if(i > 0)
+                retSet[i] = false;
+        }
+        // Check column
+        for(int r = 0; r < BOARD_ROWS; r++) {
+            int i = board[r][col];
+            if(i > 0)
+                retSet[i] = false;
+        }
+        // Check sub-block
+        int rowBoxOffset = (row / BOARD_ROOT) * BOARD_ROOT;
+        int colBoxOffset = (col / BOARD_ROOT) * BOARD_ROOT;
+        for(int i = 0; i < BOARD_ROOT; ++i) {
+            for(int j = 0; j < BOARD_ROOT; ++j) {
+                int val = board[rowBoxOffset + i][colBoxOffset + j];
+                if(val > 0)
+                    retSet[val] = false;
+            }
+        }
+        return retSet;
+    }
+
+    public boolean[] candidates(int row, int col) {
+        return this.candidates(row, col, this.board);
+    }
+
+    public int[] candidatesList(int row, int col, int[][] board) {
+        boolean[] candidates = this.candidates(row, col, board);
+        List<Integer> list = new ArrayList<Integer>();
+        for(int i = 1; i <= BOARD_SQUR; i++)
+            if(candidates[i])
+                list.add(i);
+        return toIntArray(list);
+    }
+
+    public int[] candidatesList(int row, int col) {
+        return this.candidatesList(row, col, this.board);
     }
 
     // Returns true if made any changes
@@ -222,6 +268,14 @@ public class Sudoku {
                     String.valueOf(
                         lineBoard.charAt(row * BOARD_COLS + col)));
         return board;
+    }
+
+    private int[] toIntArray(List<Integer> list)  {
+        int[] ret = new int[list.size()];
+        int i = 0;
+        for (Integer e : list)  
+            ret[i++] = e.intValue();
+        return ret;
     }
 
 }

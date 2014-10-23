@@ -6,6 +6,7 @@ public class Run {
         Sudoku puzzle = new Sudoku(readFile("board.txt"));
         puzzle.print();
         System.out.println(puzzle.toString().replaceAll("(.{9,9})", "$1\n"));
+        System.out.println(Arrays.toString(puzzle.candidatesList(1,4)));
     }
 
     public static String readFile(String path) {
