@@ -94,7 +94,7 @@ public class Sudoku {
     }
 
     public void print() {
-        String firstLine = " ";
+        String firstLine = "//";
         String lineBreak = "  +";
         for(int colGroup = 0; colGroup < BOARD_COLS / BOARD_ROOT; colGroup++) {
             firstLine += "  ";
@@ -103,8 +103,9 @@ public class Sudoku {
                 lineBreak += "--";
             lineBreak += "+";
             for(int col = colGroup * BOARD_ROOT; col < (colGroup + 1) * BOARD_ROOT; col++)
-                firstLine += " " + (col + 1);
+                firstLine += (col + 1) + " ";
         }
+        firstLine = firstLine.replace("\\s*$", "");
         System.out.println(firstLine);
         System.out.println(lineBreak);
         for(int rowGroup = 0; rowGroup < BOARD_ROWS / BOARD_ROOT; rowGroup++) {
@@ -209,10 +210,9 @@ public class Sudoku {
     }
 
     private int[][] parseString(String lineBoard) {
-        lineBoard = lineBoard.replaceAll("/\\*(.*?)\\*/" , "" )
-                             .replaceAll("//(.*?)\\r?\\n", "" )
-                             .replaceAll("\\."           , "0")
-                             .replaceAll("[^\\d]"        , "" );
+        lineBoard = lineBoard.replaceAll("(?:/\\*(?:[^*]|(?:\\*+[^*/]))*\\*+/)|(?://.*)", "")
+                             .replaceAll("\\.", "0")
+                             .replaceAll("[^\\d]", "");
         if(lineBoard.length() != BOARD_CELS)
             throw new RuntimeException("Invalid cell number");
         int[][] board = new int[BOARD_ROWS][BOARD_COLS];
