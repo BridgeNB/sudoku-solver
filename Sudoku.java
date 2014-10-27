@@ -1,11 +1,5 @@
 import java.util.*;
 
-class BoardValidityException extends RuntimeException {
-    public BoardValidityException(int val, int valRow, int valCol, int conRow, int conCol, String checkType) {
-        super("Cell with value " + val + " at (" + valRow + ", " + valCol + ") conflicts with (" + conRow + ", " + conCol + ") in " + checkType + " check");
-    }
-}
-
 public class Sudoku {
 
 /******************************************************
@@ -41,14 +35,18 @@ public class Sudoku {
         this.board(this.parseString(lineBoard));
     }
 
-    // Return the current board
+    // Return a copy of the current board
     public int[][] board() {
-        return this.board;
+        int[][] ret = new int[BOARD_ROWS][BOARD_COLS];
+        for(int row = 0; row < BOARD_ROWS; row++)
+            for(int col = 0; col < BOARD_COLS; col++)
+                ret[row][col] = this.board[row][col];
+        return ret;
     }
 
     // Set the board by given value
     public void board(int[][] board) {
-        if(!this.validateBoard(board))
+        if(!this.isValidateBoard(board))
             throw new RuntimeException("Invalid board");
         this.board = board;
     }
@@ -58,14 +56,15 @@ public class Sudoku {
     // a candidate for the cell at row and column, so
     // long as the cell is not already set (non-zero),
     // in which case there are no candidates.
-    public boolean[] candidates(int row, int col, int[][] board) {
+    public boolean[] candidates(int row, int col) {
+        int[][] board = this.board;
         boolean[] retSet = new boolean[BOARD_SQUR + 1];
         if(board[row][col] != 0) {
             for(int i = 1; i < BOARD_SQUR; i++)
                 retSet[i] = false;
             return retSet;
         }
-        for(int i = 1; i < BOARD_SQUR; i++)
+        for(int i = 1; i <= BOARD_SQUR; i++)
             retSet[i] = true;
         // Check row
         for(int c = 0; c < BOARD_COLS; c++) {
@@ -92,12 +91,8 @@ public class Sudoku {
         return retSet;
     }
 
-    public boolean[] candidates(int row, int col) {
-        return this.candidates(row, col, this.board);
-    }
-
-    public int[] candidatesList(int row, int col, int[][] board) {
-        boolean[] candidates = this.candidates(row, col, board);
+    public int[] candidatesList(int row, int col) {
+        boolean[] candidates = this.candidates(row, col);
         List<Integer> list = new ArrayList<Integer>();
         for(int i = 1; i <= BOARD_SQUR; i++)
             if(candidates[i])
@@ -105,8 +100,12 @@ public class Sudoku {
         return toIntArray(list);
     }
 
-    public int[] candidatesList(int row, int col) {
-        return this.candidatesList(row, col, this.board);
+    public Set<Integer> candidatesSet(int row, int col) {
+        int[] list = this.candidatesList(row, col);
+        Set<Integer> retSet = new TreeSet<Integer>();
+        for(int i = 0; i < list.length; i++)
+            retSet.add(list[i]);
+        return retSet;
     }
 
     // Returns true if made any changes
@@ -114,10 +113,10 @@ public class Sudoku {
         boolean ret = false;
         for(int row = 0; row < BOARD_ROWS; row++) {
             for(int col = 0; col < BOARD_COLS; col++) {
-                int[] candidates = candidatesList(row, col);
+                int[] candidates = this.candidatesList(row, col);
                 if(candidates.length == 1) {
                     this.board[row][col] = candidates[0];
-                    System.out.format("Found naked single at (%d, %d)%n", row, col);
+                    System.out.format("Found naked single at (%s, %d)%n", ((char)(65 + row)), col);
                     ret = true;
                 }
             }
@@ -127,13 +126,84 @@ public class Sudoku {
 
     // Returns true if made any changes
     public boolean hiddenSingles() {
-        // TODO
-        return true;
+        boolean ret = false;
+        for(int row = 0; row < BOARD_ROWS; row++) {
+            for(int col = 0; col < BOARD_COLS; col++) {
+                Set<Integer> candidates = this.candidatesSet(row, col);
+                if(candidates.size() == 0)
+                    continue;
+                // Check sub-row
+                for(int c = 0; c < BOARD_COLS; c++)
+                    if(c != col)
+                        candidates.removeAll(this.candidatesSet(row, c));
+                if(checkRemainingHiddenSingels(candidates, row, col)) {
+                    ret = true;
+                    continue;
+                }
+                // Check sub-column
+                for(int r = 0; r < BOARD_ROWS; r++)
+                    if(r != row)
+                        candidates.removeAll(this.candidatesSet(r, col));
+                if(checkRemainingHiddenSingels(candidates, row, col)) {
+                    ret = true;
+                    continue;
+                }
+                // Check sub-block
+                int rowBoxOffset = (row / BOARD_ROOT) * BOARD_ROOT;
+                int colBoxOffset = (col / BOARD_ROOT) * BOARD_ROOT;
+                for (int i = 0; i < BOARD_ROOT; ++i) {
+                    for (int j = 0; j < BOARD_ROOT; ++j) {
+                        int r = rowBoxOffset + i;
+                        int c = colBoxOffset + j;
+                        if (!(r == row && c == col))
+                            candidates.removeAll(this.candidatesSet(r, c));
+                    }
+                }
+                if(checkRemainingHiddenSingels(candidates, row, col)) {
+                    ret = true;
+                    continue;
+                }
+            }
+        }
+        return ret;
+    }
+
+    // A universal algorithm solving Sudoku
+    public void backtrack() {
+        int[][] board = this.board();
+        this.backtrack(0, 0, board);
+        this.board(board);
+    }
+
+    // Recursive loop to brute-force the puzzle
+    public boolean backtrack(int row, int col, int[][] board) {
+        if(row == BOARD_ROWS) {
+            row = 0;
+            if(++col == BOARD_COLS) {
+                return true;
+            }
+        }
+        if(board[row][col] != 0)
+            return backtrack(row + 1, col, board);
+        for(int val = 1; val <= BOARD_SQUR; ++val) {
+            if(this.isLegal(row, col, val, board)) {
+                board[row][col] = val;
+                if(backtrack(row+1, col, board))
+                    return true;
+            }
+        }
+        board[row][col] = 0;
+        return false;
     }
 
     // Returns true if the board is in a solved state
     public boolean isSolved() {
-        // TODO
+        for(int row = 0; row < BOARD_SQUR; row++) {
+            for(int col = 0; col < BOARD_SQUR; col++) {
+                if(this.board[row][col] == 0)
+                    return false;
+            }
+        }
         return true;
     }
 
@@ -142,6 +212,7 @@ public class Sudoku {
     public void solve() {
         while (!this.isSolved() &&
               (this.nakedSingles() || this.hiddenSingles()));
+        this.backtrack();
     }
 
     public String toString() {
@@ -189,21 +260,17 @@ public class Sudoku {
 
     // Check the subunits of a certain cell to see if the number
     // filled in the cell is legal.
-    private boolean isLegal(int row, int col, int val, int[][] board, boolean throwExcption) {
+    private boolean isLegal(int row, int col, int val, int[][] board) {
         if(val == 0)
             return true;
         // Check sub-row
         for(int c = 0; c < BOARD_COLS; c++)
             if(c != col && val == board[row][c]) {
-                if(throwExcption)
-                    throw new BoardValidityException(val, row, col, row, c, "row");
                 return false;
             }
         // Check sub-column
         for(int r = 0; r < BOARD_ROWS; r++)
             if(r != row && val == board[r][col]) {
-                if(throwExcption)
-                    throw new BoardValidityException(val, row, col, r, col, "col");
                 return false;
             }
         // Check sub-block
@@ -214,8 +281,6 @@ public class Sudoku {
                 int r = rowBoxOffset + i;
                 int c = colBoxOffset + j;
                 if (!(r == row && c == col) && val == board[r][c]) {
-                    if(throwExcption)
-                        throw new BoardValidityException(val, row, col, r, c, "box");
                     return false;
                 }
             }
@@ -223,49 +288,27 @@ public class Sudoku {
         return true;
     }
 
-    private boolean isLegal(int row, int col, int val, int[][] board) {
-        return this.isLegal(row, col, val, board, false);
+    private boolean checkRemainingHiddenSingels(Set<Integer> candidates, int row, int col) {
+        if(candidates.size() == 1) {
+            Iterator<Integer> it = candidates.iterator();
+            this.board[row][col] = it.next().intValue();
+            System.out.format("Found hidden single at (%s, %d)%n", ((char)(65 + row)), col);
+            return true;
+        }
+        return false;
     }
 
-    private boolean isLegal(int row, int col) {
-        return this.isLegal(row, col, this.board[row][col], this.board);
-    }
-
-    private boolean isLegal(int row, int col, boolean throwExcption) {
-        return this.isLegal(row, col, this.board[row][col], this.board, throwExcption);
-    }
-
-    private boolean isLegal(int row, int col, int val) {
-        return this.isLegal(row, col, val, this.board);
-    }
-
-    private boolean isLegal(int row, int col, int val, boolean throwExcption) {
-        return this.isLegal(row, col, val, this.board, throwExcption);
-    }
-
-    private boolean isLegal(int row, int col, int[][] board) {
-        return this.isLegal(row, col, board[row][col], board);
-    }
-
-    private boolean isLegal(int row, int col, int[][] board, boolean throwExcption) {
-        return this.isLegal(row, col, board[row][col], board, throwExcption);
-    }
-
-    private boolean validateBoard(int[][] board) {
+    private boolean isValidateBoard(int[][] board) {
         if(board.length != BOARD_ROWS)
             return false;
         for(int row = 0; row < BOARD_ROWS; row++) {
             if(board[row].length != BOARD_COLS)
                 return false;
             for(int col = 0; col < BOARD_COLS; col++)
-                if(!this.isLegal(row, col, board))
+                if(!this.isLegal(row, col, board[row][col], board))
                     return false;
         }
         return true;
-    }
-
-    private boolean validateBoard() {
-        return this.validateBoard(this.board);
     }
 
     private int[][] parseString(String lineBoard) {
