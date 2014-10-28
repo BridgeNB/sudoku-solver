@@ -7,8 +7,7 @@ public class Run {
         puzzle.print();
         puzzle.solve();
         puzzle.print();
-        // System.out.println(puzzle.toString().replaceAll("(.{9,9})", "$1\n"));
-        // System.out.println(Arrays.toString(puzzle.candidatesList(1,1)));
+        System.out.println(puzzle.toString());
     }
 
     public static String readFile(String path) {
@@ -18,7 +17,7 @@ public class Run {
             while (in.hasNextLine()) {
                 ret += in.nextLine() + "\n";
             }
-        } catch(FileNotFoundException fnfe) { 
+        } catch (FileNotFoundException fnfe) {
             System.out.println(fnfe.getMessage());
         }
         return ret;

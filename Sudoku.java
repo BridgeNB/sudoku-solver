@@ -190,7 +190,7 @@ public class Sudoku {
     public void solve() {
         while (!this.isSolved() &&
                 (this.nakedSingles() || this.hiddenSingles()));
-        // this.backtrack();
+        this.backtrack();
     }
 
     public String toString() {
