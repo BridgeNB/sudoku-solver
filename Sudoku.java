@@ -56,56 +56,33 @@ public class Sudoku {
     // a candidate for the cell at row and column, so
     // long as the cell is not already set (non-zero),
     // in which case there are no candidates.
+
     public boolean[] candidates(int row, int col) {
+        int bits = this.candidatesBits(row, col);
+        boolean[] ret = new boolean[BOARD_SQUR];
+        for(int i = BOARD_SQUR - 1; i > 0; i--)
+            ret[i] = (bits & (1 << i)) != 0;
+        return ret;
+    }
+
+    public int candidatesBits(int row, int col) {
         int[][] board = this.board;
-        boolean[] retSet = new boolean[BOARD_SQUR + 1];
-        if(board[row][col] != 0) {
-            for(int i = 1; i < BOARD_SQUR; i++)
-                retSet[i] = false;
-            return retSet;
-        }
-        for(int i = 1; i <= BOARD_SQUR; i++)
-            retSet[i] = true;
+        if(board[row][col] != 0)
+            return 0;
+        int ret = (2 << BOARD_SQUR) - 1;
         // Check row
-        for(int c = 0; c < BOARD_COLS; c++) {
-            int i = board[row][c];
-            if(i > 0)
-                retSet[i] = false;
-        }
+        for(int c = 0; c < BOARD_COLS; c++)
+            ret &= ~(1 << board[row][c]);
         // Check column
-        for(int r = 0; r < BOARD_ROWS; r++) {
-            int i = board[r][col];
-            if(i > 0)
-                retSet[i] = false;
-        }
+        for(int r = 0; r < BOARD_ROWS; r++)
+            ret &= ~(1 << board[r][col]);
         // Check sub-block
         int rowBoxOffset = (row / BOARD_ROOT) * BOARD_ROOT;
         int colBoxOffset = (col / BOARD_ROOT) * BOARD_ROOT;
-        for(int i = 0; i < BOARD_ROOT; ++i) {
-            for(int j = 0; j < BOARD_ROOT; ++j) {
-                int val = board[rowBoxOffset + i][colBoxOffset + j];
-                if(val > 0)
-                    retSet[val] = false;
-            }
-        }
-        return retSet;
-    }
-
-    public int[] candidatesList(int row, int col) {
-        boolean[] candidates = this.candidates(row, col);
-        List<Integer> list = new ArrayList<Integer>();
-        for(int i = 1; i <= BOARD_SQUR; i++)
-            if(candidates[i])
-                list.add(i);
-        return toIntArray(list);
-    }
-
-    public Set<Integer> candidatesSet(int row, int col) {
-        int[] list = this.candidatesList(row, col);
-        Set<Integer> retSet = new TreeSet<Integer>();
-        for(int i = 0; i < list.length; i++)
-            retSet.add(list[i]);
-        return retSet;
+        for(int i = 0; i < BOARD_ROOT; ++i)
+            for(int j = 0; j < BOARD_ROOT; ++j)
+                ret &= ~(1 << board[rowBoxOffset + i][colBoxOffset + j]);
+        return ret >> 1;
     }
 
     // Returns true if made any changes
@@ -113,10 +90,11 @@ public class Sudoku {
         boolean ret = false;
         for(int row = 0; row < BOARD_ROWS; row++) {
             for(int col = 0; col < BOARD_COLS; col++) {
-                int[] candidates = this.candidatesList(row, col);
-                if(candidates.length == 1) {
-                    this.board[row][col] = candidates[0];
-                    System.out.format("Found naked single at (%s, %d)%n", ((char)(65 + row)), col);
+                int candidates = this.candidatesBits(row, col);
+                if(this.countBits(candidates) == 1) {
+                    int val = this.bitLength(candidates);
+                    this.board[row][col] = val;
+                    System.out.format("Naked single %d at (%s, %d)%n", val, ((char)(65 + row)), col + 1);
                     ret = true;
                 }
             }
@@ -129,13 +107,13 @@ public class Sudoku {
         boolean ret = false;
         for(int row = 0; row < BOARD_ROWS; row++) {
             for(int col = 0; col < BOARD_COLS; col++) {
-                Set<Integer> candidates = this.candidatesSet(row, col);
-                if(candidates.size() == 0)
+                int candidates = this.candidatesBits(row, col);
+                if(candidates == 0)
                     continue;
                 // Check sub-row
                 for(int c = 0; c < BOARD_COLS; c++)
                     if(c != col)
-                        candidates.removeAll(this.candidatesSet(row, c));
+                        candidates &= ~this.candidatesBits(row, c);
                 if(checkRemainingHiddenSingels(candidates, row, col)) {
                     ret = true;
                     continue;
@@ -143,7 +121,7 @@ public class Sudoku {
                 // Check sub-column
                 for(int r = 0; r < BOARD_ROWS; r++)
                     if(r != row)
-                        candidates.removeAll(this.candidatesSet(r, col));
+                        candidates &= ~this.candidatesBits(r, col);
                 if(checkRemainingHiddenSingels(candidates, row, col)) {
                     ret = true;
                     continue;
@@ -156,7 +134,7 @@ public class Sudoku {
                         int r = rowBoxOffset + i;
                         int c = colBoxOffset + j;
                         if (!(r == row && c == col))
-                            candidates.removeAll(this.candidatesSet(r, c));
+                            candidates &= ~this.candidatesBits(r, c);
                     }
                 }
                 if(checkRemainingHiddenSingels(candidates, row, col)) {
@@ -212,7 +190,7 @@ public class Sudoku {
     public void solve() {
         while (!this.isSolved() &&
               (this.nakedSingles() || this.hiddenSingles()));
-        this.backtrack();
+        // this.backtrack();
     }
 
     public String toString() {
@@ -288,11 +266,11 @@ public class Sudoku {
         return true;
     }
 
-    private boolean checkRemainingHiddenSingels(Set<Integer> candidates, int row, int col) {
-        if(candidates.size() == 1) {
-            Iterator<Integer> it = candidates.iterator();
-            this.board[row][col] = it.next().intValue();
-            System.out.format("Found hidden single at (%s, %d)%n", ((char)(65 + row)), col);
+    private boolean checkRemainingHiddenSingels(int candidates, int row, int col) {
+        if(this.countBits(candidates) == 1) {
+            int val = nextSetBit(candidates, 0) + 1;
+            this.board[row][col] = val;
+            System.out.format("Hidden single %d at (%s, %d)%n", val, ((char)(65 + row)), col + 1);
             return true;
         }
         return false;
@@ -326,12 +304,27 @@ public class Sudoku {
         return board;
     }
 
-    private int[] toIntArray(List<Integer> list)  {
-        int[] ret = new int[list.size()];
-        int i = 0;
-        for (Integer e : list)  
-            ret[i++] = e.intValue();
-        return ret;
+    // Counts number of usable bits
+    private int bitLength(int x) {
+        return Integer.SIZE - Integer.numberOfLeadingZeros(x);
+    }
+
+    // Counts number of non-zero bits
+    private int countBits(int x) {
+        x = (x >>> 1 & 0x55555555) + (x & 0x55555555);
+        x = (x >>> 2 & 0x33333333) + (x & 0x33333333);
+        x = (x >>> 4 & 0x0f0f0f0f) + (x & 0x0f0f0f0f);
+        x = (x >>> 8 & 0x00ff00ff) + (x & 0x00ff00ff);
+        return(x >>> 16) + (x & 0x0000ffff);
+    }
+
+    // return the index of the next non-zero bit
+    private int nextSetBit(int x, int fromIndex) {
+        int length = this.bitLength(x);
+        for(int i = length - 1 - fromIndex; i > 0; i--)
+            if((x & (1 << i)) != 0)
+                return i;
+        return -1;
     }
 
 }
